@@ -20,7 +20,7 @@ from transcriber_gemini import transcribe_audio_with_gemini
 
 def run_pipeline(input_audio_path: str, custom_glossary: str = None) -> None:
     """
-    Orchestrates the entire Transcpty pipeline:
+    Orchestrates the entire ScribePy pipeline:
     1. Validates input files.
     2. Runs audio preprocessing (noise reduction, conversion to WAV 16kHz mono).
     3. Uploads the processed audio to Gemini, transcribes it with diarization and context.
@@ -39,7 +39,7 @@ def run_pipeline(input_audio_path: str, custom_glossary: str = None) -> None:
     output_txt_path = f"{base_name}_transcript.txt"
     
     print("=" * 60)
-    print("TRANSCPTY PIPELINE: Audio Preprocessing & Intelligent Transcription")
+    print("SCRIBEPY PIPELINE: Audio Preprocessing & Intelligent Transcription")
     print("=" * 60)
     print(f"Input File:        {input_audio_path}")
     print(f"Intermediate WAV:  {temp_wav_path}")

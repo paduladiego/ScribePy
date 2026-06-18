@@ -1,6 +1,6 @@
-# Infrastructure and Architecture: Transcpty
+# Infrastructure and Architecture: ScribePy
 
-This document outlines the architecture, pipeline stages, and token optimization strategies for the Transcpty transcription tool.
+This document outlines the architecture, pipeline stages, and token optimization strategies for the ScribePy transcription tool.
 
 ## Technical Architecture
 
