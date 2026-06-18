@@ -4,17 +4,17 @@ from pydub import AudioSegment
 import noisereduce as nr
 import soundfile as sf
 
-def preprocess_audio(input_path: str, output_path: str) -> str:
+def preprocess_audio(input_path: str, output_path: str) -> tuple[str, float]:
     """
-    Converts input audio (e.g. .m4a) to WAV 16kHz mono, applies noise reduction
-    to suppress industrial background noise, and normalizes the voice signal.
+    Converte o áudio de entrada (ex: .m4a) para WAV 16kHz mono, aplica redução de ruído
+    para suprimir o ruído industrial de fundo e normaliza o sinal de voz.
     
     Args:
-        input_path (str): Path to the input audio file.
-        output_path (str): Path where the processed WAV file will be saved.
+        input_path (str): Caminho para o arquivo de áudio de entrada.
+        output_path (str): Caminho onde o arquivo WAV processado será salvo.
         
     Returns:
-        str: Path to the processed audio file.
+        tuple[str, float]: Caminho do arquivo processado e duração em segundos.
     """
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Input audio file not found: {input_path}")
@@ -57,12 +57,16 @@ def preprocess_audio(input_path: str, output_path: str) -> str:
         use_tqdm=True
     )
     
-    # Save the processed numpy array as a standard 16kHz wav file
+    # Calcula a duração do áudio em segundos antes de salvar
+    audio_duration_seconds = len(reduced_noise) / sample_rate
+    
+    # Salva o array numpy processado como um arquivo WAV padrão de 16kHz
     print(f"Saving processed clean audio to: {output_path}")
     sf.write(output_path, reduced_noise, sample_rate, subtype='PCM_16')
     
-    print("Audio processing completed successfully.")
-    return output_path
+    print(f"Audio processing completed successfully. Duration: {audio_duration_seconds:.1f}s")
+    # Retorna o caminho do arquivo e a duração para o cálculo de custo
+    return output_path, audio_duration_seconds
 
 if __name__ == "__main__":
     # Self-test block when running directly

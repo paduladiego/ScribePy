@@ -4,18 +4,19 @@ import time
 from google import genai
 from google.genai import types
 
-def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary: str = None) -> str:
+def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary: str = None) -> dict:
     """
-    Uploads clean audio to Gemini File API, requests transcription with speaker 
-    diarization and timestamps using a technical glossary context, and cleans up the remote file.
+    Faz upload do áudio limpo para a Gemini File API, solicita a transcrição com
+    diarização de locutores e timestamps, captura os tokens reais consumidos
+    e calcula o custo estimado em USD e BRL.
     
     Args:
-        audio_path (str): Path to the local preprocessed clean WAV audio file.
-        output_txt_path (str): Path to save the final text transcript.
-        glossary (str, optional): Custom technical terms/context to supply.
+        audio_path (str): Caminho para o arquivo WAV local pré-processado.
+        output_txt_path (str): Caminho para salvar o transcript final em texto.
+        glossary (str, optional): Termos técnicos customizados para fornecer ao modelo.
         
     Returns:
-        str: The generated transcription text.
+        dict: Dicionário com o texto da transcrição e os dados de uso/custo.
     """
     # Verify API key is available
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -88,13 +89,40 @@ def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary
         
         transcript_text = response.text
         
-        # Save transcript to file
+        # Extrai os metadados de uso real retornados pela API (tokens efetivamente consumidos)
+        usage = response.usage_metadata
+        input_tokens  = usage.prompt_token_count     if usage else 0
+        output_tokens = usage.candidates_token_count if usage else 0
+        
+        # --- Tabela de preços do Gemini 2.5 Flash (por 1 milhão de tokens) ---
+        # Fonte: https://ai.google.dev/pricing
+        PRICE_INPUT_PER_MILLION  = 0.30   # USD por 1M tokens de input
+        PRICE_OUTPUT_PER_MILLION = 2.50   # USD por 1M tokens de output
+        
+        # Custo calculado em USD com base nos tokens reais
+        cost_input_usd  = (input_tokens  / 1_000_000) * PRICE_INPUT_PER_MILLION
+        cost_output_usd = (output_tokens / 1_000_000) * PRICE_OUTPUT_PER_MILLION
+        total_cost_usd  = cost_input_usd + cost_output_usd
+        
+        # Agrupa todos os dados de uso para retornar ao pipeline principal
+        usage_data = {
+            "input_tokens":    input_tokens,
+            "output_tokens":   output_tokens,
+            "total_tokens":    input_tokens + output_tokens,
+            "cost_input_usd":  cost_input_usd,
+            "cost_output_usd": cost_output_usd,
+            "total_cost_usd":  total_cost_usd,
+            "transcript":      transcript_text,
+        }
+        
+        # Salva o transcript no arquivo de saída
         print(f"Saving transcript to: {output_txt_path}")
         with open(output_txt_path, "w", encoding="utf-8") as f:
             f.write(transcript_text)
             
         print("Transcription process finished successfully.")
-        return transcript_text
+        # Retorna o dicionário completo com texto e métricas de custo
+        return usage_data
         
     finally:
         # Crucial clean-up step to delete the file from the cloud after processing

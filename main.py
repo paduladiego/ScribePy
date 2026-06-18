@@ -46,21 +46,45 @@ def run_pipeline(input_audio_path: str, custom_glossary: str = None) -> None:
     print(f"Final Transcript:  {output_txt_path}")
     print("-" * 60)
     
+    # Taxa de câmbio USD -> BRL (atualize conforme necessário)
+    USD_TO_BRL = 6.00
+    
     try:
-        # Step 1: Preprocess Audio (Convert, Normalize, Noise reduction)
+        # Etapa 1: Pré-processamento do áudio (Conversão, Normalização, Redução de Ruído)
         print("\n--- STAGE 1: Audio Processing ---")
-        preprocess_audio(input_audio_path, temp_wav_path)
+        # Captura o caminho do WAV e a duração real do áudio
+        _, audio_duration_seconds = preprocess_audio(input_audio_path, temp_wav_path)
         
-        # Step 2: Transcribe and Diarize with Gemini 1.5
+        # Etapa 2: Transcrição e Diarização com o Gemini 2.5 Flash
         print("\n--- STAGE 2: Contextual Transcription via Gemini API ---")
-        transcribe_audio_with_gemini(
+        usage_data = transcribe_audio_with_gemini(
             audio_path=temp_wav_path,
             output_txt_path=output_txt_path,
             glossary=custom_glossary
         )
         
+        # Converte a duração para formato legível (MM:SS)
+        duration_min = int(audio_duration_seconds // 60)
+        duration_sec = int(audio_duration_seconds % 60)
+        
+        # Calcula o custo total em BRL
+        total_cost_brl = usage_data["total_cost_usd"] * USD_TO_BRL
+        
         print("\n--- STAGE 3: Finalizing ---")
         print(f"Success! Your transcript is ready: {output_txt_path}")
+        print("\n" + "=" * 60)
+        print(" 💰  TOKEN & COST REPORT")
+        print("=" * 60)
+        print(f"  Audio Duration:    {duration_min:02d}:{duration_sec:02d} ({audio_duration_seconds:.0f}s)")
+        print(f"  Input Tokens:      {usage_data['input_tokens']:>10,}")
+        print(f"  Output Tokens:     {usage_data['output_tokens']:>10,}")
+        print(f"  Total Tokens:      {usage_data['total_tokens']:>10,}")
+        print("-" * 60)
+        print(f"  Cost (Input):      USD ${usage_data['cost_input_usd']:.6f}")
+        print(f"  Cost (Output):     USD ${usage_data['cost_output_usd']:.6f}")
+        print(f"  Total Cost:        USD ${usage_data['total_cost_usd']:.6f}  |  R$ {total_cost_brl:.4f}")
+        print(f"  Exchange Rate:     1 USD = R$ {USD_TO_BRL:.2f}")
+        print("=" * 60)
         
     except Exception as e:
         print(f"\nPipeline Error occurred: {e}")
