@@ -1,0 +1,64 @@
+Aqui está o glossário estruturado exatamente em formato de caixa de código (Markdown), pronto para ser copiado e colado nas diretrizes do seu transcritor de áudio ou IA:
+
+```markdown
+# GLOSSÁRIO DE CONTEXTO E CORREÇÃO FONÉTICA - PROJETO AS IS (ALPHA COLOR / NALS)
+
+## 1. DIRETRIZ MACRO DE TRANSCRIÇÃO
+- **Objetivo do Projeto:** Suporte, mapeamento de processos e melhorias operacionais (Metodologia Lean Black Belt).
+- **Proibição de Termos:** Nunca utilizar a palavra "Auditoria" ou similares no corpo dos relatórios. O foco é colaborativo.
+- **Ambiente de Gravação:** Áudios gravados em chão de fábrica com elevado ruído intermitente (estufas, exaustores, injetoras e movimentação de racks de alumínio).
+
+---
+
+## 2. ENTIDADES, NOMES PRÓPRIOS E COORDENADORES
+- **Syphra:** Consultoria responsável pelo mapeamento (Mapeado por: Diego Padula, Gustavo Matuck, Danilo Brandão, Sidnei).
+- **Alpha Color:** Planta industrial focada em pintura eletrostática e acabamento em perfis de alumínio.
+- **Nals / Nals Alumínio:** Empresa parceira/cliente do ecossistema de extrusão.
+- **Luís Melo:** Head / Gerente de Operações da Fábrica.
+- **Juninho / Reinaldo Jr / Pedro:** Responsáveis diretos pelo PCP, Programação e Liderança de Produção.
+- **Andréia / Arthur / Edivânia:** Operadores-chave responsáveis pela triagem, conferência física de entrada/saída, desenhos e romaneios.
+
+---
+
+## 3. ACRÔNIMOS TÉCNICOS E ENGENHARIA DE PROCESSOS
+- **AS IS:** Mapeamento do fluxo real e atual do processo (com falhas e gargalos).
+- **TO BE:** Desenho do fluxo futuro otimizado (proposta Lean).
+- **BPMN:** Notação gráfica para modelagem dos diagramas de fluxos e raias.
+- **OP:** Ordem de Produção (documento impresso que dita as especificações do lote).
+- **PCP:** Planejamento e Controle de Produção.
+- **WIP (Work in Process):** Estoque em processo ou material intermediário acumulado entre estações.
+- **PDM:** Product Data Management (Gerenciamento de Dados do Produto / Cadastros de Clientes e Códigos).
+
+---
+
+## 4. MAQUINAÁRIOS, LINHAS DE PRODUÇÃO E JARGÕES
+- **Extrusão:** Transformação mecânica do tarugo de alumínio em perfil cru.
+- **Passivação / Pré-Tratamento:** Banho químico preparatório que remove impurezas e garante aderência da tinta.
+- **Gancheiras:** Estruturas metálicas onde os perfis são pendurados para passar pelas linhas de banho e pintura.
+- **Tempo de Escorrimento / Drenagem:** Intervalo necessário para o líquido dos banhos químicos escoar das peças.
+- **Euro 1 / Euro 2 / Gema:** Cabines e linhas específicas de Pintura Eletrostática a Pó.
+- **Estufa de Secagem / Polimerização (Cura):** Fornos industriais para secagem pós-banho ou fixação térmica da tinta em pó.
+- **Sublimação (Linha C):** Processo de alta tecnologia de transferência de efeito madeira através de filme plástico (ribbon), vácuo e calor.
+- **Pó-Sob-Pó / Decoral (Linha B):** Processo manual e síncrono em dupla que aplica o efeito madeira texturizado por meio de cilindros em relevo.
+- **Espátula de Celuloide:** Ferramenta manual utilizada na Linha C para realizar o ajuste físico do vácuo no filme plástico protetor.
+- **Mini Pulmão:** Áreas físicas delimitadas para estoque temporário de transição entre etapas produtivas.
+- **Romaneio:** Lista de conferência quantitativa e qualitativa atrelada às notas fiscais de industrialização.
+
+---
+
+## 5. DICIONÁRIO DE CORREÇÃO FONÉTICA (FILTRO ANTI-RUÍDO)
+Instruir o motor de Speech-to-Text a converter fonemas distorcidos pelo barulho metalúrgico para os termos corretos da regra do jogo:
+
+| Se o áudio transcrever algo parecido com: | Corrigir imediatamente para o termo oficial: |
+| :--- | :--- |
+| "Slacks", "Slecks", "Planilha solta" | **Sistema / Tablet / ERP** |
+| "Arrack", "Arraque", "Prateleira" | **Racks (de acondicionamento de perfis)** |
+| "Habitats de grupo", "Churin", "Forno de fora" | **Estufa de Polimerização / Estufa de Cura** |
+| "Saider", "Caminhão aberto", "Carga de lado" | **Caminhão Sider** |
+| "Bolinhas coloridas", "Adesivos da Andreia" | **Bolinhas adesivas de triagem / Identificação visual** |
+| "Pebolim", "Pó com pó" | **Linha Pó-Sob-Pó (Efeito madeira texturizado)** |
+| "Filmagens", "Fita plástica", "Saco da madeira" | **Filme / Ribbon de sublimação** |
+| "Arrastre", "Água caindo" | **Arraste / Tempo de escorrimento dos banhos** |
+| "Nota B", "Nota de mentira" | **Nota de Simulação Fiscal / Triangulação** |
+
+```

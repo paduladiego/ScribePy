@@ -1,0 +1,9 @@
+google-genai
+pydub
+noisereduce
+numpy
+scipy
+soundfile
+audioop-lts
+static-ffmpeg
+python-dotenv
