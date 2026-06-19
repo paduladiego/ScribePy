@@ -1,8 +1,26 @@
 import os
 import sys
 import time
+import threading
 from google import genai
 from google.genai import types
+
+def _spin_while_generating(stop_event: threading.Event, attempt: int, max_retries: int) -> None:
+    """Exibe um spinner animado com cronômetro enquanto a API Gemini está processando."""
+    # Frames do spinner — ASCII puro para compatibilidade com Windows
+    frames = ["|", "/", "-", "\\"]
+    elapsed = 0
+    idx     = 0
+    label   = f"Attempt {attempt}/{max_retries}"
+    while not stop_event.is_set():
+        mins, secs = divmod(elapsed, 60)
+        # Sobrescreve a linha atual com o spinner, label e tempo decorrido
+        print(f"\r  [{label}] Processando na API... {frames[idx % 4]}  {mins:02d}:{secs:02d}", end="", flush=True)
+        time.sleep(1)
+        elapsed += 1
+        idx     += 1
+    # Limpa a linha do spinner quando terminar
+    print("\r" + " " * 70 + "\r", end="", flush=True)
 
 def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary: str = None) -> dict:
     """
@@ -29,7 +47,11 @@ def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
         
-    # Initialize the client
+    # Lê o modelo configurado no .env (fallback para gemini-2.5-flash se não definido)
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    print(f"Model: {model_name}")
+    
+    # Inicializa o cliente da API Gemini
     client = genai.Client()
     
     print(f"Uploading audio to Gemini File API: {audio_path}")
@@ -76,34 +98,77 @@ def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary
         "based on the system instructions."
     )
     
+    # Configuração do retry com backoff exponencial para erros transitórios da API
+    MAX_RETRIES  = 3    # Número máximo de tentativas antes de desistir
+    RETRY_CODES  = {"UNAVAILABLE", "RESOURCE_EXHAUSTED"}  # Códigos de erro que permitem retry
+    BASE_WAIT_S  = 10   # Tempo de espera inicial em segundos (dobra a cada tentativa)
+
     try:
-        # Request generation using the recommended model for speed and efficiency
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[uploaded_file, prompt],
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.2, # Low temperature for more factual transcription
-            )
-        )
-        
+        response = None
+        # Loop de tentativas com backoff exponencial
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                # Inicia o spinner animado em thread separada para feedback visual durante a espera
+                stop_spinner = threading.Event()
+                spinner_thread = threading.Thread(
+                    target=_spin_while_generating,
+                    args=(stop_spinner, attempt, MAX_RETRIES),
+                    daemon=True
+                )
+                spinner_thread.start()
+
+                try:
+                    # Requisição bloqueante ao modelo configurado no .env
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=[uploaded_file, prompt],
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            temperature=0.2,       # Temperatura baixa para transcrição mais factual
+                            max_output_tokens=65536 # Limite máximo do Gemini 2.5 Flash — evita truncamento em áudios longos
+                        )
+                    )
+                finally:
+                    # Garante que o spinner pare independente de sucesso ou falha
+                    stop_spinner.set()
+                    spinner_thread.join()
+
+                # Sai do loop se a requisição for bem-sucedida
+                print(f"  ✓ Transcrição concluída com sucesso!")
+                break
+
+            except Exception as api_err:
+                err_str = str(api_err)
+                # Verifica se o erro é transitório e pode ser recuperado com retry
+                is_retryable = any(code in err_str for code in RETRY_CODES)
+
+                if is_retryable and attempt < MAX_RETRIES:
+                    # Calcula o tempo de espera com backoff exponencial (10s, 20s, 40s...)
+                    wait_seconds = BASE_WAIT_S * (2 ** (attempt - 1))
+                    print(f"  ⚠ API temporariamente indisponível (tentativa {attempt}/{MAX_RETRIES}).")
+                    print(f"  Aguardando {wait_seconds}s antes de tentar novamente...")
+                    time.sleep(wait_seconds)
+                else:
+                    # Erro não recuperável ou esgotadas as tentativas — propaga a exceção
+                    raise
+
         transcript_text = response.text
-        
+
         # Extrai os metadados de uso real retornados pela API (tokens efetivamente consumidos)
         usage = response.usage_metadata
         input_tokens  = usage.prompt_token_count     if usage else 0
         output_tokens = usage.candidates_token_count if usage else 0
-        
+
         # --- Tabela de preços do Gemini 2.5 Flash (por 1 milhão de tokens) ---
         # Fonte: https://ai.google.dev/pricing
         PRICE_INPUT_PER_MILLION  = 0.30   # USD por 1M tokens de input
         PRICE_OUTPUT_PER_MILLION = 2.50   # USD por 1M tokens de output
-        
-        # Custo calculado em USD com base nos tokens reais
+
+        # Custo calculado em USD com base nos tokens reais da resposta
         cost_input_usd  = (input_tokens  / 1_000_000) * PRICE_INPUT_PER_MILLION
         cost_output_usd = (output_tokens / 1_000_000) * PRICE_OUTPUT_PER_MILLION
         total_cost_usd  = cost_input_usd + cost_output_usd
-        
+
         # Agrupa todos os dados de uso para retornar ao pipeline principal
         usage_data = {
             "input_tokens":    input_tokens,
@@ -114,12 +179,12 @@ def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary
             "total_cost_usd":  total_cost_usd,
             "transcript":      transcript_text,
         }
-        
+
         # Salva o transcript no arquivo de saída
         print(f"Saving transcript to: {output_txt_path}")
         with open(output_txt_path, "w", encoding="utf-8") as f:
             f.write(transcript_text)
-            
+
         print("Transcription process finished successfully.")
         # Retorna o dicionário completo com texto e métricas de custo
         return usage_data
