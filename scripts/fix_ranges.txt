@@ -1,0 +1,9 @@
+# Escreva os intervalos de tempo que deseja re-transcrever, um por linha.
+# Linhas iniciadas com '#' ou vazias são ignoradas.
+# Formato: MM:SS - MM:SS (ou 'fim' para transcrever até o final do áudio)
+#
+# Exemplo 1: Para corrigir o trecho ruidoso no minuto 26
+26:10 - 26:30
+
+# Exemplo 2: Para corrigir o trecho ruidoso no minuto 38
+37:50 - 38:15
