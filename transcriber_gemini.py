@@ -1,115 +1,193 @@
 import os
+import re
 import sys
 import time
 import threading
 from google import genai
 from google.genai import types
 
-def _spin_while_generating(stop_event: threading.Event, attempt: int, max_retries: int) -> None:
+
+def _spin_while_generating(
+    stop_event: threading.Event, attempt: int, max_retries: int
+) -> None:
     """Exibe um spinner animado com cronômetro enquanto a API Gemini está processando."""
     # Frames do spinner — ASCII puro para compatibilidade com Windows
-    frames = ["|", "/", "-", "\\"]
+    frames  = ["|", "/", "-", "\\"]
     elapsed = 0
     idx     = 0
     label   = f"Attempt {attempt}/{max_retries}"
     while not stop_event.is_set():
         mins, secs = divmod(elapsed, 60)
         # Sobrescreve a linha atual com o spinner, label e tempo decorrido
-        print(f"\r  [{label}] Processando na API... {frames[idx % 4]}  {mins:02d}:{secs:02d}", end="", flush=True)
+        print(
+            f"\r  [{label}] Processando na API... {frames[idx % 4]}  {mins:02d}:{secs:02d}",
+            end="", flush=True
+        )
         time.sleep(1)
         elapsed += 1
         idx     += 1
     # Limpa a linha do spinner quando terminar
     print("\r" + " " * 70 + "\r", end="", flush=True)
 
-def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary: str = None) -> dict:
+
+def get_resume_offset(transcript_path: str) -> float:
+    """
+    Analisa o arquivo de transcript para determinar o ponto de retomada.
+    Procura pelo padrão de timestamp [MM:SS - MM:SS] e retorna o último offset de fim.
+
+    Args:
+        transcript_path (str): Caminho para o arquivo de transcript.
+
+    Returns:
+        -1.0  -> transcript completo (contém '--- FIM ---')
+         0.0  -> sem transcript ou sem timestamps (começar do zero)
+        float -> segundos do último timestamp de fim (ponto para retomada)
+    """
+    if not os.path.exists(transcript_path):
+        return 0.0
+
+    with open(transcript_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Verifica se o transcript já está marcado como completo
+    if "--- FIM ---" in content:
+        return -1.0
+
+    # Procura todos os timestamps no formato [MM:SS - MM:SS]
+    pattern = r"\[(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\]"
+    matches = re.findall(pattern, content)
+
+    if not matches:
+        return 0.0
+
+    # Extrai os minutos e segundos do último timestamp de FIM
+    last          = matches[-1]
+    end_minutes   = int(last[2])
+    end_seconds   = int(last[3])
+    return float(end_minutes * 60 + end_seconds)
+
+
+def transcribe_audio_with_gemini(
+    audio_path: str,
+    output_txt_path: str,
+    glossary: str = None,
+    resume_from_seconds: float = 0.0
+) -> dict:
     """
     Faz upload do áudio limpo para a Gemini File API, solicita a transcrição com
     diarização de locutores e timestamps, captura os tokens reais consumidos
     e calcula o custo estimado em USD e BRL.
-    
+
+    Suporta modo resume: se resume_from_seconds > 0, os timestamps do prompt são
+    ajustados para o offset correto e o resultado é anexado ao arquivo existente.
+    Ao final de uma transcrição bem-sucedida, adiciona o marcador '--- FIM ---'.
+
     Args:
-        audio_path (str): Caminho para o arquivo WAV local pré-processado.
+        audio_path (str): Caminho para o arquivo WAV local pré-processado (ou fatiado).
         output_txt_path (str): Caminho para salvar o transcript final em texto.
         glossary (str, optional): Termos técnicos customizados para fornecer ao modelo.
-        
+        resume_from_seconds (float): Offset em segundos para modo resume. 0.0 = início.
+
     Returns:
         dict: Dicionário com o texto da transcrição e os dados de uso/custo.
     """
-    # Verify API key is available
+    # Verifica se a chave de API está disponível
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ValueError(
             "GEMINI_API_KEY environment variable is not set.\n"
             "Please set it using: $env:GEMINI_API_KEY='your_api_key_here' in PowerShell."
         )
-        
+
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
-        
+
     # Lê o modelo configurado no .env (fallback para gemini-2.5-flash se não definido)
     model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     print(f"Model: {model_name}")
-    
+
+    # Modo de operação: nova transcrição ou retomada de ponto anterior
+    is_resume = resume_from_seconds > 0.0
+    if is_resume:
+        offset_min = int(resume_from_seconds // 60)
+        offset_sec = int(resume_from_seconds % 60)
+        print(f"Mode: RESUME from {offset_min:02d}:{offset_sec:02d} ({resume_from_seconds:.0f}s)")
+    else:
+        print("Mode: NEW transcription")
+
     # Inicializa o cliente da API Gemini
     client = genai.Client()
-    
+
     print(f"Uploading audio to Gemini File API: {audio_path}")
-    # Upload audio to Gemini Files API (handles large files efficiently)
+    # Faz upload do áudio para a Files API (gerencia arquivos grandes de forma eficiente)
     uploaded_file = client.files.upload(file=audio_path)
     print(f"Upload complete. File Reference URI: {uploaded_file.uri}")
-    
-    # Wait for the file to be processed by Gemini backend if necessary
-    # (Usually fast, but recommended for larger audio/video files)
+
+    # Aguarda o processamento do backend da Gemini se necessário
     print("Waiting for audio processing on Gemini backend...", end="", flush=True)
     while uploaded_file.state.name == "PROCESSING":
         print(".", end="", flush=True)
         time.sleep(2)
         uploaded_file = client.files.get(name=uploaded_file.name)
-        
+
     print(" [Done]")
     if uploaded_file.state.name == "FAILED":
         raise RuntimeError("Gemini audio processing failed on backend.")
-        
+
     print("Audio processing on backend complete. Generating transcript with context (this may take a few seconds)...")
-    
-    # Define industrial default context if none provided
+
+    # Define o glossário industrial padrão se nenhum for fornecido
     default_glossary = (
         "Aluminum sublimation factory, sublimated profiles, sublimation film (filme sublimático), "
         "heat presses, curing ovens, extrusion, anodizing, lacquer coating, metal profiles."
     )
     selected_glossary = glossary if glossary else default_glossary
-    
+
+    # Instrução de offset de timestamp — informa ao modelo a partir de qual segundo o áudio começa
+    offset_instruction = ""
+    if is_resume:
+        offset_instruction = (
+            f"\nIMPORTANT — TIMESTAMP OFFSET: This audio clip starts at "
+            f"{offset_min:02d}:{offset_sec:02d} of the original recording. "
+            f"ALL timestamps MUST begin at [{offset_min:02d}:{offset_sec:02d}] "
+            f"and count forward from there. Do NOT restart from [00:00].\n"
+        )
+
     system_instruction = (
-        "You are an expert industrial transcriber. Your job is to listen to the audio file and transcrib it accurately "
-        "in Portuguese (PT-BR), correcting speech recognition mistakes based on the context and technical glossary provided below.\n\n"
-        f"Context & Technical Glossary:\n{selected_glossary}\n\n"
+        "You are an expert industrial transcriber. Your job is to listen to the audio file and "
+        "transcribe it accurately in Portuguese (PT-BR), correcting speech recognition mistakes "
+        "based on the context and technical glossary provided below.\n\n"
+        f"Context & Technical Glossary:\n{selected_glossary}\n"
+        f"{offset_instruction}\n"
         "Instructions:\n"
         "1. Identify the speakers and separate them as Participant 1, Participant 2, Participant 3, etc.\n"
-        "2. Add precise timestamps format [MM:SS - MM:SS] at the beginning of each dialog turn indicating when the turn started and ended.\n"
-        "3. Correct phonetic misunderstandings using the glossary context (e.g. if the audio sounds like 'filme de cinema' or 'insulfilme' "
-        "but is in a context of sublimation, write 'filme sublimático').\n"
-        "4. Output ONLY the clean structured transcript. Do not include introductory notes, chat filler, or formatting notes."
+        "2. Add precise timestamps format [MM:SS - MM:SS] at the beginning of each dialog turn "
+        "indicating when the turn started and ended.\n"
+        "3. Correct phonetic misunderstandings using the glossary context (e.g. if the audio sounds "
+        "like 'filme de cinema' or 'insulfilme' but is in a context of sublimation, write "
+        "'filme sublimático').\n"
+        "4. Output ONLY the clean structured transcript. Do not include introductory notes, "
+        "chat filler, or formatting notes."
     )
-    
+
     prompt = (
         "Generate a complete transcription of the uploaded audio in Portuguese (PT-BR). "
-        "Separate dialogue turns by speakers (Participant 1, 2, 3...) and write their respective timestamps [MM:SS - MM:SS] "
-        "based on the system instructions."
+        "Separate dialogue turns by speakers (Participant 1, 2, 3...) and write their "
+        "respective timestamps [MM:SS - MM:SS] based on the system instructions."
     )
-    
+
     # Configuração do retry com backoff exponencial para erros transitórios da API
-    MAX_RETRIES  = 3    # Número máximo de tentativas antes de desistir
-    RETRY_CODES  = {"UNAVAILABLE", "RESOURCE_EXHAUSTED"}  # Códigos de erro que permitem retry
-    BASE_WAIT_S  = 10   # Tempo de espera inicial em segundos (dobra a cada tentativa)
+    MAX_RETRIES = 3    # Número máximo de tentativas antes de desistir
+    RETRY_CODES = {"UNAVAILABLE", "RESOURCE_EXHAUSTED"}  # Erros recuperáveis
+    BASE_WAIT_S = 10   # Tempo de espera inicial em segundos (dobra a cada tentativa)
 
     try:
         response = None
         # Loop de tentativas com backoff exponencial
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                # Inicia o spinner animado em thread separada para feedback visual durante a espera
-                stop_spinner = threading.Event()
+                # Inicia o spinner animado em thread separada para feedback visual
+                stop_spinner   = threading.Event()
                 spinner_thread = threading.Thread(
                     target=_spin_while_generating,
                     args=(stop_spinner, attempt, MAX_RETRIES),
@@ -124,8 +202,8 @@ def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary
                         contents=[uploaded_file, prompt],
                         config=types.GenerateContentConfig(
                             system_instruction=system_instruction,
-                            temperature=0.2,       # Temperatura baixa para transcrição mais factual
-                            max_output_tokens=65536 # Limite máximo do Gemini 2.5 Flash — evita truncamento em áudios longos
+                            temperature=0.2,        # Temperatura baixa para transcrição mais factual
+                            max_output_tokens=65536  # Limite máximo — evita truncamento em áudios longos
                         )
                     )
                 finally:
@@ -133,8 +211,17 @@ def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary
                     stop_spinner.set()
                     spinner_thread.join()
 
-                # Sai do loop se a requisição for bem-sucedida
-                print(f"  ✓ Transcrição concluída com sucesso!")
+                # --- Validação: detecta resposta vazia (ex: modelo não suporta áudio via Files API) ---
+                transcript_text = response.text if response else ""
+                if not transcript_text or not transcript_text.strip():
+                    raise RuntimeError(
+                        f"Model '{model_name}' returned an empty transcript. "
+                        "This model may not support audio via the Files API. "
+                        "Try setting GEMINI_MODEL=gemini-2.5-flash in your .env file."
+                    )
+
+                # Sai do loop se a requisição foi bem-sucedida
+                print(f"  \u2713 Transcricao concluida com sucesso!")
                 break
 
             except Exception as api_err:
@@ -145,17 +232,15 @@ def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary
                 if is_retryable and attempt < MAX_RETRIES:
                     # Calcula o tempo de espera com backoff exponencial (10s, 20s, 40s...)
                     wait_seconds = BASE_WAIT_S * (2 ** (attempt - 1))
-                    print(f"  ⚠ API temporariamente indisponível (tentativa {attempt}/{MAX_RETRIES}).")
+                    print(f"  ! API temporariamente indisponivel (tentativa {attempt}/{MAX_RETRIES}).")
                     print(f"  Aguardando {wait_seconds}s antes de tentar novamente...")
                     time.sleep(wait_seconds)
                 else:
                     # Erro não recuperável ou esgotadas as tentativas — propaga a exceção
                     raise
 
-        transcript_text = response.text
-
         # Extrai os metadados de uso real retornados pela API (tokens efetivamente consumidos)
-        usage = response.usage_metadata
+        usage         = response.usage_metadata
         input_tokens  = usage.prompt_token_count     if usage else 0
         output_tokens = usage.candidates_token_count if usage else 0
 
@@ -180,23 +265,30 @@ def transcribe_audio_with_gemini(audio_path: str, output_txt_path: str, glossary
             "transcript":      transcript_text,
         }
 
-        # Salva o transcript no arquivo de saída
-        print(f"Saving transcript to: {output_txt_path}")
-        with open(output_txt_path, "w", encoding="utf-8") as f:
+        # Salva o transcript: modo append em resume, sobrescreve em nova transcrição
+        write_mode = "a" if is_resume else "w"
+        print(f"Saving transcript to: {output_txt_path} (mode={write_mode})")
+        with open(output_txt_path, write_mode, encoding="utf-8") as f:
+            if is_resume:
+                # Adiciona separação visual antes do trecho retomado
+                f.write("\n")
             f.write(transcript_text)
+            # Marcador de conclusão — âncora do sistema de checkpoint
+            f.write("\n\n--- FIM ---\n")
 
         print("Transcription process finished successfully.")
         # Retorna o dicionário completo com texto e métricas de custo
         return usage_data
-        
+
     finally:
-        # Crucial clean-up step to delete the file from the cloud after processing
+        # Limpeza obrigatória: remove o arquivo do armazenamento da Gemini File API
         print("Cleaning up remote file from Gemini File API storage...")
         client.files.delete(name=uploaded_file.name)
         print("Remote cleanup completed.")
 
+
 if __name__ == "__main__":
-    # Self-test block when running directly
+    # Bloco de autoteste ao executar diretamente
     if len(sys.argv) > 2:
         transcribe_audio_with_gemini(sys.argv[1], sys.argv[2])
     else:
