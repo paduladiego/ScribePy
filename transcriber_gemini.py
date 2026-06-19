@@ -30,6 +30,33 @@ def _spin_while_generating(
     print("\r" + " " * 70 + "\r", end="", flush=True)
 
 
+def clean_transcript_residue(transcript_path: str, lines_to_remove: int = 3) -> None:
+    """
+    Remove as ultimas N linhas de um arquivo de transcricao incompleto
+    para eliminar residuos ou dialogos truncados causados por travamentos anteriores.
+    """
+    if not os.path.exists(transcript_path):
+        return
+
+    with open(transcript_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Se ja esta finalizado com o marcador de fim, nao mexemos
+    if "--- FIM ---" in content:
+        return
+
+    lines = content.splitlines()
+    if len(lines) <= lines_to_remove:
+        print(f"[CLEANUP] Transcript file '{os.path.basename(transcript_path)}' has very few lines. Clearing to start fresh.")
+        with open(transcript_path, "w", encoding="utf-8") as f:
+            f.write("")
+    else:
+        print(f"[CLEANUP] Removing last {lines_to_remove} lines from '{os.path.basename(transcript_path)}' to clean residues.")
+        trimmed_lines = lines[:-lines_to_remove]
+        with open(transcript_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(trimmed_lines) + "\n")
+
+
 def get_resume_offset(transcript_path: str) -> float:
     """
     Analisa o arquivo de transcript para determinar o ponto de retomada.
@@ -273,8 +300,6 @@ def transcribe_audio_with_gemini(
                 # Adiciona separação visual antes do trecho retomado
                 f.write("\n")
             f.write(transcript_text)
-            # Marcador de conclusão — âncora do sistema de checkpoint
-            f.write("\n\n--- FIM ---\n")
 
         print("Transcription process finished successfully.")
         # Retorna o dicionário completo com texto e métricas de custo
