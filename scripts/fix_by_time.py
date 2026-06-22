@@ -9,7 +9,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from pydub import AudioSegment
 from google import genai
 from google.genai import types
-from audio_processor import preprocess_audio
+from src.audio_processor import preprocess_audio
+from src.spinner import TerminalSpinner
 
 # Configura o caminho do FFmpeg automaticamente no Windows/Mac/Linux
 try:
@@ -42,12 +43,45 @@ def run_fix_by_time():
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, ".."))
+
+    # Verifica se o arquivo de audio foi passado via terminal
+    if len(sys.argv) < 2:
+        print("Uso: .venv/Scripts/python scripts/fix_by_time.py <caminho_do_audio_ou_base_name>")
+        print("Exemplo: .venv/Scripts/python scripts/fix_by_time.py Qualidade-Joao.m4a")
+        print("\nArquivos de áudio disponíveis na raiz do projeto:")
+        try:
+            audio_files = [f for f in os.listdir(project_root) if f.endswith(".m4a") or (f.endswith(".wav") and not f.endswith("_clean.wav") and not f.endswith("_resume.wav"))]
+            for f in audio_files:
+                print(f"  - {f}")
+        except Exception:
+            pass
+        return
+
+    input_arg = sys.argv[1]
+    # Remove a extensao se o usuario passou com .m4a ou .wav
+    base_name = os.path.splitext(os.path.basename(input_arg))[0]
+    # Se o base_name termina com "_clean", removemos para achar o audio original
+    if base_name.endswith("_clean"):
+        base_name = base_name[:-6]
     
     ranges_file = os.path.join(script_dir, "fix_ranges.txt")
-    txt_path = os.path.join(project_root, "teste_transcript.txt")
-    wav_path = os.path.join(project_root, "teste_clean.wav")
-    m4a_path = os.path.join(project_root, "teste.m4a")
-    output_correcoes_path = os.path.join(project_root, "teste_transcript_correcoes.txt")
+    converted_dir = os.path.join(project_root, "converted")
+    os.makedirs(converted_dir, exist_ok=True)
+    
+    txt_path = os.path.join(converted_dir, f"{base_name}_transcript.txt")
+    wav_path = os.path.join(converted_dir, f"{base_name}_clean.wav")
+    
+    # Procura pelo arquivo de audio original na raiz, na pasta converted ou usando o argumento direto
+    if os.path.exists(os.path.join(project_root, input_arg)):
+        m4a_path = os.path.join(project_root, input_arg)
+    elif os.path.exists(os.path.join(converted_dir, input_arg)):
+        m4a_path = os.path.join(converted_dir, input_arg)
+    elif os.path.exists(input_arg):
+        m4a_path = os.path.abspath(input_arg)
+    else:
+        m4a_path = os.path.join(converted_dir, f"{base_name}.m4a")
+        
+    output_correcoes_path = os.path.join(converted_dir, f"{base_name}_transcript_correcoes.txt")
     glossary_path = os.path.join(project_root, "glossario.txt")
 
     # 1. Verifica/Cria o arquivo de configuração de intervalos
@@ -123,8 +157,8 @@ def run_fix_by_time():
             end_ms = int(end_seconds * 1000)
             sliced = audio[start_ms:end_ms]
             
-            # Gera um nome temporário único para a fatia
-            fix_wav_path = os.path.join(project_root, f"temp_slice_{start_str.replace(':', '_')}.wav")
+            # Gera um nome temporário único para a fatia na pasta converted
+            fix_wav_path = os.path.join(converted_dir, f"temp_slice_{start_str.replace(':', '_')}.wav")
             sliced.export(fix_wav_path, format="wav")
 
             print(f"Uploading slice '{os.path.basename(fix_wav_path)}' to Gemini API...")
@@ -159,35 +193,42 @@ def run_fix_by_time():
                 offset_sec = int(start_seconds % 60)
 
                 system_instruction = (
-                    "You are an expert industrial transcriber. Your job is to listen to the audio file and "
-                    "transcribe it accurately in Portuguese (PT-BR), correcting speech recognition mistakes "
-                    "based on the context and technical glossary provided below.\n\n"
-                    f"Context & Technical Glossary:\n{glossary}\n"
-                    f"\nIMPORTANT — TIMESTAMP OFFSET: This audio clip starts at {offset_min:02d}:{offset_sec:02d} of the original recording. "
-                    f"ALL timestamps MUST begin at [{offset_min:02d}:{offset_sec:02d}] and count forward from there. Do NOT restart from [00:00].\n\n"
-                    "Instructions:\n"
-                    "1. Identify the speakers and separate them as Participant 1, Participant 2, Participant 3, etc.\n"
-                    "2. Add precise timestamps format [MM:SS - MM:SS] at the beginning of each dialog turn.\n"
-                    "3. Correct phonetic misunderstandings using the glossary context.\n"
-                    "4. Output ONLY the clean structured transcript. Do not include notes or comments."
+                    "Você é um transcritor industrial especialista. Seu trabalho é ouvir o arquivo de áudio e "
+                    "transcrevê-lo com precisão em português (PT-BR), corrigindo erros de reconhecimento de fala "
+                    "com base no contexto e no glossário técnico fornecido abaixo.\n\n"
+                    f"Contexto e Glossário Técnico:\n{glossary}\n"
+                    f"\nIMPORTANTE — OFFSET DE TIMESTAMP: Este clipe de áudio começa em {offset_min:02d}:{offset_sec:02d} da gravação original. "
+                    f"TODOS os timestamps DEVEM iniciar em [{offset_min:02d}:{offset_sec:02d}] e contar a partir daí. NÃO reinicie do [00:00].\n\n"
+                    "Instruções cruciais de formatação:\n"
+                    "1. Identifique os falantes e separe-os obrigatoriamente como 'Participante 1', 'Participante 2', 'Participante 3', etc.\n"
+                    "2. Adicione timestamps precisos no início de cada fala no formato [MM:SS - MM:SS] (indicando quando a fala começou e terminou).\n"
+                    "3. A estrutura de cada linha deve ser exatamente: [MM:SS - MM:SS] Participante X - Texto da fala\n"
+                    "   Exemplo:\n"
+                    f"   [{offset_min:02d}:{offset_sec:02d} - {offset_min:02d}:{offset_sec:02d}] Participante 1 - Exemplo de fala\n"
+                    "4. Corrija incompreensões fonéticas usando o contexto do glossário.\n"
+                    "5. Retorne APENAS a transcrição estruturada e limpa. Não inclua notas ou comentários."
                 )
 
                 prompt = (
-                    "Generate a complete transcription of the uploaded audio in Portuguese (PT-BR). "
-                    "Separate dialogue turns by speakers (Participant 1, 2, 3...) and write their "
-                    "respective timestamps [MM:SS - MM:SS] based on the system instructions."
+                    "Gere a transcrição completa do áudio enviado em português (PT-BR).\n"
+                    "Separe as falas por participantes (Participante 1, Participante 2...) e formate cada linha "
+                    "exatamente como: [MM:SS - MM:SS] Participante X - Texto da fala, baseando-se nas instruções do sistema."
                 )
 
-                print("Requesting transcript from Gemini...")
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=[uploaded_file, prompt],
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_instruction,
-                        temperature=0.2,
-                        max_output_tokens=65536
+                spinner = TerminalSpinner(label="Requesting transcript from Gemini")
+                spinner.start()
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=[uploaded_file, prompt],
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            temperature=0.2,
+                            max_output_tokens=65536
+                        )
                     )
-                )
+                finally:
+                    spinner.stop()
 
                 new_transcript = response.text if response else ""
                 if not new_transcript or not new_transcript.strip():
@@ -208,12 +249,12 @@ def run_fix_by_time():
                 except Exception:
                     pass
                 
-                # Deleta a fatia local
-                if os.path.exists(fix_wav_path):
-                    try:
-                        os.remove(fix_wav_path)
-                    except Exception:
-                        pass
+                # Removido/comentado a delecao da fatia local — o usuario limpa depois
+                # if os.path.exists(fix_wav_path):
+                #     try:
+                #         os.remove(fix_wav_path)
+                #     except Exception:
+                #         pass
         except Exception as chunk_err:
             print(f"Erro ao processar o intervalo {start_str} - {end_str}: {chunk_err}")
 
