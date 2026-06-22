@@ -2,6 +2,12 @@
 python-interpreter-path = ".venv/Scripts/python.exe"
 site-package-path = [".venv/Lib/site-packages"]
 
+# Caminho de busca para módulos do projeto (resolve importações a partir da raiz)
+search-path = ["."]
+
+# Desativa a exibição de erros de tipo estático na IDE para evitar falsos positivos
+disable-type-errors-in-ide = true
+
 # Diretórios incluídos na análise do linter
 project-includes = ["src", "scripts", "main.py"]
 
