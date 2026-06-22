@@ -1,53 +1,74 @@
 # Infrastructure and Architecture: ScribePy
 
-This document outlines the architecture, pipeline stages, and token optimization strategies for the ScribePy transcription tool.
+This document outlines the architecture, pipeline stages, token optimization strategies, and the structural design of the ScribePy transcription tool.
 
 ## Technical Architecture
 
-The transcription pipeline follows a three-stage layout:
+The ScribePy architecture is designed under the Python package conventions (PEP 8/PEP 518) using a `src/` package layout. The pipeline isolates generated output and intermediate assets inside the `converted/` directory, mitigating any deletion risks on code and configuration assets.
 
 ```mermaid
 graph TD
-    A[M4A Input Audio] --> B[Audio Pre-processing]
-    B -->|Convert to WAV 16kHz Mono| C[Noise Reduction]
-    C -->|Clean WAV| D[Gemini 1.5 Flash API]
-    D -->|Multimodal Prompting with Context| E[Structured TXT Output]
-    E --> F[NotebookLM Ingestion]
+    A["M4A Input Audio (Root or CLI path)"] --> B["Audio Pre-processing (src/audio_processor.py)"]
+    B -->|Convert to WAV 16kHz Mono| C["Noise Reduction ( noisereduce )"]
+    C -->|Clean WAV| D["Gemini 2.5 Flash API (src/transcriber_gemini.py)"]
+    D -->|Multimodal Prompting with Context| E["Outputs folder (converted/)"]
+    E -->|Clean WAV / Chunks| F["Intermediate Audios"]
+    E -->|Final Text Transcript| G["NotebookLM Ingestion"]
 ```
 
-### 1. Audio Pre-processing Stage (Local)
-* **Library**: `pydub` (requires system `ffmpeg`).
-* **Conversion**: Converts input `.m4a` files into `.wav`.
-* **Resampling**: Downsamples the audio to **16kHz, Mono, 16-bit PCM**. This is the standard audio format for most speech recognition and LLM models. It significantly reduces file size (improving upload speeds) while preserving critical voice frequencies.
-* **Noise Cleaning**: Uses `noisereduce` to apply spectral gating and clean constant factory noise (such as exhaust fans, engine hums, and ovens).
-* **Gain Normalization**: Normalizes audio volume to amplify speech signals without clipping.
+### Directory Structure & Organization
 
-### 2. Transcription & Diarization Stage (Cloud)
-* **Model**: `gemini-1.5-flash` via the official `google-genai` Python library.
-* **Multimodal Capability**: Gemini 1.5 natively accepts raw audio files in the API request payload.
-* **In-Context Guidance**: The API request includes a system instruction prompt detailing:
-  * The industrial context (aluminum sublimation factory).
-  * A technical glossary to correct homophones and niche terms (e.g., ensuring "filme sublimático" is transcribed instead of "filme de cinema").
-  * Rules for speaker diarization (e.g., detecting and separating conversations into `Participant 1`, `Participant 2`, etc.).
-  * Formatting instructions for timestamps (`[MM:SS]`).
+```text
+ScribePy/
+├── .env                       # API Credentials and Model Configurations
+├── main.py                    # CLI Wrapper entry point (orchestrates execution parameters)
+├── infrastructure.md          # Architectural Blueprint (this file)
+├── converted/                 # Isolated output workspace (transcripts, corrections, clean WAVs)
+├── src/                       # Main Python Package containing the business logic
+│   ├── __init__.py            # Registers src/ as a package
+│   ├── audio_processor.py     # Local audio manipulation (resampling, noise reduce, slicing)
+│   ├── transcriber_gemini.py  # Gemini API service client wrapper
+│   ├── pipeline.py            # Programmatic smart resume & slice execution pipeline
+│   ├── spinner.py             # Multithreaded console spinner & elapsed time counter
+│   └── cleaner.py             # File system cleanup helper interface
+└── scripts/                   # Utility automation scripts
+    ├── cleanup.py             # Manual run script to delete files in converted/
+    ├── fix_by_time.py         # Surgical segment correction script
+    └── fix_ranges.txt         # Targets for segment corrections
+```
+
+---
+
+## Technical Flow & Components
+
+### 1. Programmatic Pipeline (`src/pipeline.py`)
+* The core process is fully decoupled from command line interfaces and terminal exits. It raises Python-native exceptions (`FileNotFoundError`, `RuntimeError`) to allow future integration with backend endpoints (like FastAPI) or GUI frameworks.
+* **Checkpoint & Smart Resume**: Inspects the target file inside the `converted/` directory. If incomplete, it computes the exact timestamp and slices the intermediate WAV file, resuming the transcription process using Gemini API without duplicating previous costs.
+
+### 2. Output Isolation (`converted/` directory)
+* To protect source code scripts and `.env` credentials, all output and intermediate files generated during executions are restricted to the `converted/` directory:
+  * `{audio_name}_clean.wav` (pre-processed master audio file)
+  * `{audio_name}_resume.wav` (temporary fragment for resuming)
+  * `{audio_name}_transcript.txt` (final formatted output)
+  * `{audio_name}_transcript_correcoes.txt` (surgical corrected output chunks)
+  * `temp_slice_*.wav` (surgical audio segment slices)
+
+### 3. Asynchronous UX Monitoring (`src/spinner.py`)
+* Consists of a multithreaded CLI indicator (`TerminalSpinner`) executing on a background thread during blocking API calls (e.g. `client.models.generate_content`).
+* Provides live processing indicators (`... / 00:03`, `... / 00:04`) to monitor Gemini request states, ensuring the user gets real-time execution response status instead of an apparently frozen console.
+
+### 4. Deletion Isolation Policy (`src/cleaner.py` and `scripts/cleanup.py`)
+* Automatic deletion of intermediate WAV files is commented out by default to let the user review the files.
+* A manual execution script (`scripts/cleanup.py`) can be called by the user. It scans only inside the `converted/` directory and prompts the user with confirmation before erasing files.
 
 ---
 
 ## Token Optimization & Cost Strategies
 
-Although the Gemini API free tier allows up to 15 requests per minute, optimizing token consumption is crucial for scalability and avoiding rate limits.
+### 1. Resampling Optimization
+* Downsamples input files to **16kHz, Mono, 16-bit PCM** before uploading.
+* Minimizes file payload size, speeding up network transit to Gemini File API.
 
-### 1. Audio Duration as Tokens
-* For Gemini 1.5, audio is tokenized based on duration rather than raw file size.
-* **Rate**: 1 second of audio is roughly equivalent to **266 tokens**.
-  * A 10-minute audio file uses ~160,000 tokens.
-  * A 30-minute audio file uses ~480,000 tokens.
-* **Optimization**: Since duration dictates the token cost, we do not need to split audio files purely to save tokens, but converting them to a clean format ensures the model can process them in a single prompt call without hallucinating or losing context.
-
-### 2. System Instruction Optimization
-* Keep the technical glossary concise. Only include words that the model is likely to mistake based on acoustic similarity (e.g., "filme sublimático", "extrusão", "perfil de alumínio").
-* Avoid conversational filler in the system prompt to minimize input prompt tokens.
-
-### 3. NotebookLM Workflow Integration
-* The final output is formatted as a lightweight, clean `.txt` or `.md` transcript.
-* By uploading the structured text file to NotebookLM alongside a static factory glossary document, we minimize the token load on NotebookLM, ensuring high-speed context search and synthesis.
+### 2. Audio Token Count
+* Gemini 1.5 and 2.5 tokenization is based on audio duration: **1 second of audio ≈ 266 tokens**.
+* Resuming from the correct checkpoint avoids duplicate prompting of the entire file, significantly lowering developer costs on long-running audio files.

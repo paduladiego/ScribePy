@@ -1,0 +1,14 @@
+# Configuração do interpretador de Python do ambiente virtual
+python-interpreter-path = ".venv/Scripts/python.exe"
+site-package-path = [".venv/Lib/site-packages"]
+
+# Diretórios incluídos na análise do linter
+project-includes = ["src", "scripts", "main.py"]
+
+# Diretórios excluídos da análise para evitar falsos positivos
+project-excludes = [
+    "**/.venv/**",
+    "**/venv/**",
+    "**/__pycache__/**",
+    "**/converted/**"
+]

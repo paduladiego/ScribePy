@@ -61,6 +61,10 @@ Com o ambiente virtual ativo, basta executar o script principal passando o camin
 .\.venv\Scripts\python.exe main.py caminho/do/seu_audio.m4a
 ```
 
+```Bash
+.venv/Scripts/python main.py "caminho/do/seu_audio.m4a"
+```
+
 O programa fará:
 1. A limpeza e conversão do áudio (exibindo a porcentagem na tela).
 2. O upload e a geração do texto na nuvem (exibindo pontos de progresso).
