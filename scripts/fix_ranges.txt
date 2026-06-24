@@ -3,7 +3,7 @@
 # Formato: MM:SS - MM:SS (ou 'fim' para transcrever até o final do áudio)
 #
 # Exemplo 1: Para corrigir o trecho ruidoso no minuto 26
-31:18 - 39:40
+# 31:18 - 39:40
 
 # Exemplo 2: Para corrigir o trecho ruidoso no minuto 38
 # 39:57 - 41:34

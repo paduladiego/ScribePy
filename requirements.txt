@@ -9,3 +9,4 @@ static-ffmpeg
 python-dotenv
 openai
 faster-whisper
+requests>=2.31.0

@@ -53,11 +53,18 @@ def transcribe_audio(
                 glossary=glossary,
                 resume_from_seconds=resume_from_seconds
             )
-
+        elif api_provider == "GLADIA":
+            from .transcriber_gladia import transcribe_audio_with_gladia
+            return transcribe_audio_with_gladia(
+                audio_path=audio_path,
+                output_txt_path=output_txt_path,
+                glossary=glossary,
+                resume_from_seconds=resume_from_seconds
+            )
         else:
             raise ValueError(
                 f"Provedor de API inválido: '{api_provider}'. "
-                "Opções aceitas no .env: GEMINI ou OPENAI."
+                "Opções aceitas no .env: GEMINI, OPENAI ou GLADIA."
             )
     else:
         raise ValueError(
