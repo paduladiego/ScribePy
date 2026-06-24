@@ -30,3 +30,7 @@ __pycache__/
 .gemini/
 .system_generated/
 .agents/
+
+# Pasta de modelos locais (Whisper checkpoints)
+models/
+

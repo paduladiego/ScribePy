@@ -2,7 +2,8 @@ import os
 import sys
 
 from .audio_processor import preprocess_audio, get_wav_duration, slice_wav
-from .transcriber_gemini import transcribe_audio_with_gemini, get_resume_offset, clean_transcript_residue
+from .transcriber_dispatcher import transcribe_audio
+from .transcriber_gemini import get_resume_offset, clean_transcript_residue
 
 def run_pipeline(input_audio_path: str, custom_glossary: str = None) -> None:
     """
@@ -131,7 +132,7 @@ def run_pipeline(input_audio_path: str, custom_glossary: str = None) -> None:
         print("\n--- STAGE 2: Contextual Transcription via Gemini API ---")
         transcript_complete = False
         try:
-            usage_data = transcribe_audio_with_gemini(
+            usage_data = transcribe_audio(
                 audio_path=audio_to_upload,
                 output_txt_path=output_txt_path,
                 glossary=custom_glossary,

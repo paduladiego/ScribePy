@@ -7,3 +7,5 @@ soundfile
 audioop-lts
 static-ffmpeg
 python-dotenv
+openai
+faster-whisper

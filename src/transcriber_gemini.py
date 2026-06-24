@@ -372,10 +372,11 @@ def transcribe_audio_with_gemini(
         # Aplica filtro anti-loop: colapsa repeticoes causadas por alucinacao do Gemini
         transcript_text = _deduplicate_repetition_loops(transcript_text, max_repeats=3)
 
-        # Se for resume, ajusta todos os timestamps somando o offset inicial do áudio enviado
+        # Sempre ajusta e padroniza os timestamps (somando o offset, que é 0.0 em novas transcrições)
+        # Isso garante o formato correto de dois dígitos nos minutos (ex: [01:02] em vez de [1:02])
         if is_resume:
             print(f"  [RESUME] Ajustando timestamps com offset de +{resume_from_seconds:.1f}s...")
-            transcript_text = _adjust_timestamps(transcript_text, resume_from_seconds)
+        transcript_text = _adjust_timestamps(transcript_text, resume_from_seconds)
 
         # Salva o transcript: modo append em resume, sobrescreve em nova transcrição
         write_mode = "a" if is_resume else "w"
