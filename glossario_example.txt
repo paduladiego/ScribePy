@@ -1,0 +1,46 @@
+# ==============================================================================
+# GLOSSÁRIO DE CONTEXTO E CORREÇÃO FONÉTICA (TEMPLATE DE EXEMPLO)
+# ==============================================================================
+#
+# Dica de Uso:
+# 1. Copie este arquivo ou renomeie para 'glossario.txt' na raiz do projeto.
+# 2. O ScribePy aceita tanto Markdown com tabelas explicativas quanto listas
+#    simples separadas por vírgulas.
+#
+# ==============================================================================
+
+## 1. DIRETRIZ MACRO DE TRANSCRIÇÃO
+- **Objetivo do Projeto:** Mapeamento de processos operacionais e reuniões técnicas.
+- **Ambiente de Gravação:** Áudios com ruído ambiente moderado a severo (motores, salas compartilhadas, videoconferências).
+
+---
+
+## 2. NOMES PRÓPRIOS, PAPÉIS E ENTIDADES
+- **Empresa Exemplo:** Nome da organização ou cliente principal.
+- **Participante 1 (Tech Lead):** Responsável pela arquitetura de sistemas e infraestrutura.
+- **Participante 2 (Product Owner):** Responsável pelos requisitos e regras de negócio.
+- **Participante 3 (Consultor):** Consultoria externa especializada em melhoria contínua.
+
+---
+
+## 3. ACRÔNIMOS TÉCNICOS E JARGÕES
+- **ERP:** Enterprise Resource Planning (Sistema de gestão empresarial).
+- **CRM:** Customer Relationship Management.
+- **SLA:** Service Level Agreement (Acordo de nível de serviço).
+- **KPI:** Key Performance Indicator (Indicadores-chave de desempenho).
+- **OEE:** Overall Equipment Effectiveness.
+- **API:** Application Programming Interface.
+- **ETL:** Extract, Transform, Load.
+
+---
+
+## 4. DICIONÁRIO DE CORREÇÃO FONÉTICA (FILTRO ANTI-RUÍDO)
+Instrui o modelo a converter termos com fonética parecida ou distorcida pelo ruído:
+
+| Se o áudio transcrever algo parecido com: | Corrigir para o termo oficial: |
+| :--- | :--- |
+| "i ar pi", "e r p", "erpê" | **ERP** |
+| "k p i", "capiai", "kpi" | **KPI** |
+| "zap", "zap zap", "uats" | **WhatsApp** |
+| "es ele a", "eslai" | **SLA** |
+| "estresse", "stres", "postgre" | **PostgreSQL** |

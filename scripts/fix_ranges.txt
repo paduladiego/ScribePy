@@ -4,6 +4,7 @@
 #
 # Exemplo 1: Para corrigir o trecho ruidoso no minuto 26
 # 31:18 - 39:40
+45:15 - 1:08:50
 
 # Exemplo 2: Para corrigir o trecho ruidoso no minuto 38
 # 39:57 - 41:34

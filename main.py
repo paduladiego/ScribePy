@@ -18,13 +18,30 @@ except ImportError:
 from src.pipeline import run_pipeline
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <input_audio_file> [custom_glossary]")
-        print("Example: python main.py meeting.m4a")
+    # Detecta se a flag 'clear' foi passada como primeiro argumento da CLI
+    # Uso: python main.py clear "audio.m4a"  -> ativa redução de ruído industrial
+    # Uso: python main.py "audio.m4a"        -> apenas converte (ideal para escritório)
+    args = sys.argv[1:]
+    
+    # Verifica se o primeiro argumento é a flag de modo 'clear'
+    if args and args[0].strip().lower() == "clear":
+        noise_reduce_flag = True
+        args = args[1:]  # Remove a flag da lista, o restante são arquivo e glossário
+    else:
+        noise_reduce_flag = False
+
+    if not args:
+        print("Usage: python main.py [clear] <input_audio_file>")
+        print("  clear       -> Ativa redução de ruído industrial (chao de fab rica/fábrica)")
+        print("  (sem flag)  -> Apenas converte e normaliza (escritorio/ambiente silencioso)")
+        print("")
+        print("Exemplos:")
+        print("  python main.py meeting.m4a")
+        print("  python main.py clear factory_audio.m4a")
         sys.exit(1)
 
-    input_file   = sys.argv[1]
-    glossary_arg = sys.argv[2] if len(sys.argv) > 2 else None
+    input_file   = args[0]
+    glossary_arg = args[1] if len(args) > 1 else None
 
     # Carrega automaticamente o glossario.txt da raiz se nenhum glossário for passado
     if not glossary_arg:
@@ -41,7 +58,7 @@ if __name__ == "__main__":
                 print(f"Warning: Could not read glossary file: {e}")
 
     try:
-        run_pipeline(input_file, glossary_arg)
+        run_pipeline(input_file, glossary_arg, noise_reduce=noise_reduce_flag)
     except Exception as e:
         print(f"\nPipeline Execution Failed: {e}")
         sys.exit(1)

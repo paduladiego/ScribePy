@@ -1,0 +1,39 @@
+## 📑 Glossário Técnico: Yautja: Soberania de Sangue
+
+[cite_start]Este glossário destina-se ao treinamento de sistemas de transcrição e IA, garantindo a precisão terminológica dentro do contexto do Western Espacial e horror biomecânico do projeto[cite: 23].
+
+| Termo | Categoria | Descrição Contextual |
+| :--- | :--- | :--- |
+| **Yautja** | Espécie | [cite_start]Designação oficial da raça dos Predadores[cite: 25]. |
+| **Kainde Amedha** | Lore | [cite_start]Termo Yautja para "Carne Dura", referindo-se ao Xenomorfo[cite: 26]. |
+| **A Alfa** | Personagem | [cite_start]Xenomorfa compacta, densa e soberana; parceira do protagonista[cite: 26, 27]. |
+| **Fazendeiro** | Protagonista | [cite_start]Yautja renegado (Bad Blood) com severa deformidade nas pernas[cite: 27]. |
+| **Dobra de Thra’kesh** | Biomecânica | [cite_start]Condição genética que confere aos membros em "Z" uma força de impacto devastadora[cite: 28]. |
+| **Partênese** | Biologia | [cite_start]Reprodução autônoma sem necessidade de hospedeiro, revelada como o *twist* final[cite: 29]. |
+| **Bad Blood** | Status | [cite_start]Predador exilado que quebrou o código de honra da espécie[cite: 30]. |
+| **Youngbloods** | Status | [cite_start]Predadores jovens em período de iniciação ritual[cite: 31]. |
+
+---
+
+## 🎬 Resumo Executivo: Visão Geral
+
+**Título:** Yautja: Soberania de Sangue  
+**Gênero:** Ficção Científica / Thriller de Sobrevivência  
+[cite_start]**Premissa Comercial:** "Logan encontra Planeta dos Macacos no universo de Alien vs. Predator"[cite: 32].
+
+### Sinopse
+* [cite_start]**O Fazendeiro:** O filme narra a trajetória de um Fazendeiro Yautja, um exilado que gerencia uma fazenda ilegal de Xenomorfos em um planeta fronteiriço[cite: 33].
+* [cite_start]**A Relação:** Ele não utiliza tecnologia de controle artificial, operando sob uma dinâmica de respeito mútuo e psicologia de matilha com sua aliada, "A Alfa"[cite: 34].
+* [cite_start]**A Alfa:** A Alfa é um espécime de tamanho padrão, porém ultra-denso e cirúrgico, capaz de subjugar até Rainhas através de pura autoridade física[cite: 35].
+* [cite_start]**O Conflito:** Quando um clã de Caçadores de Elite tradicionalistas invade o planeta para erradicar a heresia da domesticação, a dupla é forçada a uma caçada brutal nos cânions[cite: 36].
+* [cite_start]**O Clímax:** A sobrevivência revela uma mutação biológica: a Alfa é, na verdade, uma fêmea capaz de partênese biomecânica, rompendo o ciclo de dependência de hospedeiros e alterando o futuro da franquia[cite: 37].
+
+---
+
+## 🛠️ Notas de Processamento para IA
+
+* [cite_start]**Diferenciação de Vozes:** O sistema deve distinguir entre a fala rústica/brutal do Fazendeiro e os sons sibilantes e estalos da Alfa[cite: 38].
+* [cite_start]**Terminologia de Combate:** Palavras como *feromonas*, *carapaça*, *articulação*, *biomecânica* e *impacto* possuem prioridade de reconhecimento por serem pilares das sequências de ação[cite: 39].
+* [cite_start]**Atmosfera:** A transcrição deve captar a aridez dos cânions e a brutalidade mecânica do combate, evitando interpretações de *gore* explícito[cite: 40].
+
+> [cite_start]**Observação Estrutural:** O projeto desconstrói o mito do "Predador perfeito", focando no trauma compartilhado entre o Fazendeiro (rejeitado por seu clã) e a Alfa (rejeitada pela sua colmeia), elevando a história de uma simples caçada para um drama psicológico de redenção mútua[cite: 41].

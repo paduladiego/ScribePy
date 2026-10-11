@@ -1,74 +1,101 @@
 # Infrastructure and Architecture: ScribePy
 
-This document outlines the architecture, pipeline stages, token optimization strategies, and the structural design of the ScribePy transcription tool.
+This document outlines the architecture, pipeline stages, token/cost optimization strategies, and directory organization of the ScribePy transcription tool up to version **v8**.
 
 ## Technical Architecture
 
-The ScribePy architecture is designed under the Python package conventions (PEP 8/PEP 518) using a `src/` package layout. The pipeline isolates generated output and intermediate assets inside the `converted/` directory, mitigating any deletion risks on code and configuration assets.
+ScribePy is designed under a decoupled facade-based pipeline using a `src/` package layout. The framework isolates intermediate audios, slices, and outputs inside the `converted/` workspace, safeguarding configuration and repository source files.
 
 ```mermaid
 graph TD
-    A["M4A Input Audio (Root or CLI path)"] --> B["Audio Pre-processing (src/audio_processor.py)"]
-    B -->|Convert to WAV 16kHz Mono| C["Noise Reduction ( noisereduce )"]
-    C -->|Clean WAV| D["Gemini 2.5 Flash API (src/transcriber_gemini.py)"]
-    D -->|Multimodal Prompting with Context| E["Outputs folder (converted/)"]
-    E -->|Clean WAV / Chunks| F["Intermediate Audios"]
-    E -->|Final Text Transcript| G["NotebookLM Ingestion"]
+    A["M4A Input Audio (CLI path)"] --> B["Audio Pre-processing (src/audio_processor.py)"]
+    B -->|WAV 16kHz Mono + Noise Reduce| C["Core Pipeline (src/pipeline.py)"]
+    C -->|Orchestrates Chunks & Offsets| D["Transcriber Dispatcher (src/transcriber_dispatcher.py)"]
+    
+    D -->|API_PROVIDER=GEMINI| E1["Gemini Client (src/transcriber_gemini.py)"]
+    D -->|API_PROVIDER=OPENAI| E2["OpenAI Client (src/transcriber_openai.py)"]
+    D -->|API_PROVIDER=GLADIA| E3["Gladia Client (src/transcriber_gladia.py)"]
+    D -->|TRANSCRIPTION_MODE=LOCAL| E4["Local Whisper (src/transcriber_local.py)"]
+    
+    E1 & E2 & E3 & E4 -->|Structured Markdown output| F["Outputs Folder (converted/)"]
+    F -->|Clean Master WAV / Resumes| G["Intermediate Assets"]
+    F -->|Final Text Transcript| H["NotebookLM Ingestion"]
 ```
+
+---
 
 ### Directory Structure & Organization
 
 ```text
 ScribePy/
-├── .env                       # API Credentials and Model Configurations
-├── main.py                    # CLI Wrapper entry point (orchestrates execution parameters)
-├── infrastructure.md          # Architectural Blueprint (this file)
-├── converted/                 # Isolated output workspace (transcripts, corrections, clean WAVs)
-├── src/                       # Main Python Package containing the business logic
-│   ├── __init__.py            # Registers src/ as a package
-│   ├── audio_processor.py     # Local audio manipulation (resampling, noise reduce, slicing)
-│   ├── transcriber_gemini.py  # Gemini API service client wrapper
-│   ├── pipeline.py            # Programmatic smart resume & slice execution pipeline
-│   ├── spinner.py             # Multithreaded console spinner & elapsed time counter
-│   └── cleaner.py             # File system cleanup helper interface
-└── scripts/                   # Utility automation scripts
-    ├── cleanup.py             # Manual run script to delete files in converted/
-    ├── fix_by_time.py         # Surgical segment correction script
-    └── fix_ranges.txt         # Targets for segment corrections
+├── .env                          # API Credentials, Routing Mode, and Model configurations
+├── README.md                     # Main user guide and setup instructions
+├── main.py                       # CLI Wrapper entry point (orchestrates execution arguments)
+├── infrastructure.md             # Architectural Blueprint (this file)
+├── glossario.txt                 # Custom factory jargon list or Markdown table
+├── converted/                    # Isolated execution output workspace (git ignored)
+│   ├── {audio}_clean.wav         # Pre-processed clean master audio
+│   ├── {audio}_resume.wav        # Temporary sliced wav for smart resume checkpoint
+│   └── {audio}_transcript.txt    # Final formatted transcript output
+│
+├── src/                          # Business logic engine
+│   ├── __init__.py               # Registers src/ as a Python package
+│   ├── audio_processor.py        # Local audio manipulation (16kHz, noisereduce, slicing)
+│   ├── pipeline.py               # Orchestrator loop (checkpoints, resumes, merges chunks)
+│   ├── transcriber_dispatcher.py # Facade Router (reads .env configurations and forwards jobs)
+│   ├── transcriber_gemini.py     # Google Gemini API integration (with native file upload)
+│   ├── transcriber_openai.py     # OpenAI Whisper-1 API integration
+│   ├── transcriber_gladia.py     # Gladia v2 API integration (with async polling and parser)
+│   ├── transcriber_local.py      # Offline faster-whisper CPU integration
+│   ├── spinner.py                # Multithreaded console UX loader spinner
+│   └── cleaner.py                # File system cleanup utilities
+│
+├── gui/                          # Roadmap assets for desktop/web expansion
+│   └── docs/                     # Visual design and platform roadmaps
+│       ├── gui_implementation_plan.md # UI/UX layout and multi-scenario strategy
+│       └── gui_windows_plan.md        # Scenario 1 (Windows Desktop App design)
+│
+└── scripts/                      # Utility scripts
+    ├── cleanup.py                # Deletes intermediate files in converted/
+    ├── fix_by_time.py            # Surgical audio chunk re-transcription helper
+    ├── smart_merge.py            # LLM-based intelligent transcript conciliator
+    └── fix_ranges.txt            # Timestamp targets for manual segment corrections
 ```
 
 ---
 
 ## Technical Flow & Components
 
-### 1. Programmatic Pipeline (`src/pipeline.py`)
-* The core process is fully decoupled from command line interfaces and terminal exits. It raises Python-native exceptions (`FileNotFoundError`, `RuntimeError`) to allow future integration with backend endpoints (like FastAPI) or GUI frameworks.
-* **Checkpoint & Smart Resume**: Inspects the target file inside the `converted/` directory. If incomplete, it computes the exact timestamp and slices the intermediate WAV file, resuming the transcription process using Gemini API without duplicating previous costs.
+### 1. The Dispatcher Router (`src/transcriber_dispatcher.py`)
+* Acts as a Facade design pattern. It evaluates the `.env` settings (`TRANSCRIPTION_MODE` and `API_PROVIDER`) to dynamically load and call the requested transcription service using lazy imports.
+* standardizes the returned metadata block (`usage_data`) so that the orchestrator pipeline calculates totals transparently.
 
-### 2. Output Isolation (`converted/` directory)
-* To protect source code scripts and `.env` credentials, all output and intermediate files generated during executions are restricted to the `converted/` directory:
-  * `{audio_name}_clean.wav` (pre-processed master audio file)
-  * `{audio_name}_resume.wav` (temporary fragment for resuming)
-  * `{audio_name}_transcript.txt` (final formatted output)
-  * `{audio_name}_transcript_correcoes.txt` (surgical corrected output chunks)
-  * `temp_slice_*.wav` (surgical audio segment slices)
+### 2. Smart Resume & Checkpoint System
+* Before starting a job, `src/pipeline.py` parses the target output file `{audio}_transcript.txt` looking for the `--- FIM ---` tag or valid timestamps like `[MM:SS - MM:SS]`.
+* If a partial transcription is found, it extracts the last timestamp offset (e.g. `44:06`), cuts the remaining audio starting from `43:56` (including a **10-second overlap** to ensure context continuity), uploads only the sliced chunk, and appends the new results to the text file.
+* This ensures resilience against internet drops, backend crashes, or API token limits, reducing financial costs.
 
-### 3. Asynchronous UX Monitoring (`src/spinner.py`)
-* Consists of a multithreaded CLI indicator (`TerminalSpinner`) executing on a background thread during blocking API calls (e.g. `client.models.generate_content`).
-* Provides live processing indicators (`... / 00:03`, `... / 00:04`) to monitor Gemini request states, ensuring the user gets real-time execution response status instead of an apparently frozen console.
-
-### 4. Deletion Isolation Policy (`src/cleaner.py` and `scripts/cleanup.py`)
-* Automatic deletion of intermediate WAV files is commented out by default to let the user review the files.
-* A manual execution script (`scripts/cleanup.py`) can be called by the user. It scans only inside the `converted/` directory and prompts the user with confirmation before erasing files.
+### 3. Smart Glossary Parser (Gladia API)
+* Unlike Gemini, which understands rich Markdown glossary instructions, the Gladia v2 API requires a flat array of words (`custom_vocabulary`).
+* `src/transcriber_gladia.py` implements the `_extract_vocabulary_terms()` helper, which automatically parses markdown tables and list negritos in `glossario.txt` and isolates clean technical words (e.g., removing brackets, parentheses and explanations) to avoid poisoning Gladia's phonetic matching system.
 
 ---
 
 ## Token Optimization & Cost Strategies
 
-### 1. Resampling Optimization
-* Downsamples input files to **16kHz, Mono, 16-bit PCM** before uploading.
-* Minimizes file payload size, speeding up network transit to Gemini File API.
+ScribePy supports detailed cost tracking across different providers. The cost calculations are performed dynamically on each executed chunk:
 
-### 2. Audio Token Count
-* Gemini 1.5 and 2.5 tokenization is based on audio duration: **1 second of audio ≈ 266 tokens**.
-* Resuming from the correct checkpoint avoids duplicate prompting of the entire file, significantly lowering developer costs on long-running audio files.
+### 1. Cost Calculations by Provider (as of v8)
+* **Google Gemini (gemini-3.1-flash-lite)**: 
+  * Audio tokenization is duration-based: **1 second of audio ≈ 266 tokens**.
+  * Input cost: USD $0.075 / 1M tokens. Output cost: USD $0.30 / 1M tokens.
+* **OpenAI API (whisper-1)**:
+  * Priced on a flat rate per second: **USD $0.006 per minute** of audio processed.
+* **Gladia API v2 (solaria-1)**:
+  * Priced at **USD $0.61 per hour** of audio (async processing). Includes multi-speaker diarization out-of-the-box.
+* **Whisper Local**:
+  * Free offline execution (Cost = $0.00).
+
+### 2. Audio Downsampling
+* ScribePy pre-processes every audio file down to **16kHz, Mono, 16-bit PCM WAV** payload before network transfer.
+* Reduces network latency during API upload phases and optimizes input token weight on multimodal API configurations.

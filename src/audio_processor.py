@@ -5,14 +5,16 @@ import noisereduce as nr
 import soundfile as sf
 
 
-def preprocess_audio(input_path: str, output_path: str) -> tuple[str, float]:
+def preprocess_audio(input_path: str, output_path: str, noise_reduce: bool = True) -> tuple[str, float]:
     """
-    Converte o áudio de entrada (ex: .m4a) para WAV 16kHz mono, aplica redução de ruído
-    para suprimir o ruído industrial de fundo e normaliza o sinal de voz.
+    Converte o áudio de entrada (ex: .m4a) para WAV 16kHz mono, normaliza o volume
+    e, opcionalmente, aplica redução de ruído estacionário para ambientes industriais.
 
     Args:
         input_path (str): Caminho para o arquivo de áudio de entrada.
         output_path (str): Caminho onde o arquivo WAV processado será salvo.
+        noise_reduce (bool): Se True, aplica noisereduce (ideal para fábrica com ruído).
+                             Se False, apenas converte e normaliza (ideal para escritório).
 
     Returns:
         tuple[str, float]: Caminho do arquivo processado e duração em segundos.
@@ -47,22 +49,27 @@ def preprocess_audio(input_path: str, output_path: str) -> tuple[str, float]:
 
     sample_rate = audio.frame_rate
 
-    print("Applying noise reduction...")
-    # Redução de ruído não-estacionário — ideal para ambientes industriais complexos
-    reduced_noise = nr.reduce_noise(
-        y=samples,
-        sr=sample_rate,
-        stationary=False,
-        prop_decrease=0.85,
-        use_tqdm=True
-    )
+    if noise_reduce:
+        # Redução de ruído não-estacionário — ativada com a flag 'clear' (ideal para fábrica)
+        print("Applying noise reduction... [CLEAR mode: factory noise suppression active]")
+        processed_samples = nr.reduce_noise(
+            y=samples,
+            sr=sample_rate,
+            stationary=False,
+            prop_decrease=0.85,
+            use_tqdm=True
+        )
+    else:
+        # Sem redução de ruído — apenas conversão de formato (ideal para escritório/ambiente limpo)
+        print("Skipping noise reduction. [CLEAN mode: office/quiet environment assumed]")
+        processed_samples = samples
 
     # Calcula a duração do áudio em segundos antes de salvar
-    audio_duration_seconds = len(reduced_noise) / sample_rate
+    audio_duration_seconds = len(processed_samples) / sample_rate
 
     # Salva o array numpy processado como um arquivo WAV padrão de 16kHz
     print(f"Saving processed clean audio to: {output_path}")
-    sf.write(output_path, reduced_noise, sample_rate, subtype='PCM_16')
+    sf.write(output_path, processed_samples, sample_rate, subtype='PCM_16')
 
     print(f"Audio processing completed successfully. Duration: {audio_duration_seconds:.1f}s")
     # Retorna o caminho do arquivo e a duração para o cálculo de custo

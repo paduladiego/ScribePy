@@ -6,6 +6,8 @@ env/
 
 # Private/Secrets
 .env
+glossario.txt
+glossario_Yuji.txt
 
 # Audio Files (Source and temporary)
 *.m4a
@@ -16,6 +18,8 @@ env/
 # Output Transcripts (To keep generated text files private)
 *_transcript.txt
 *transcript*.txt
+*report*.txt
+audit_report.txt
 
 # Python cache and temporary files
 __pycache__/

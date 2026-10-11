@@ -226,11 +226,25 @@ def transcribe_audio_with_gemini(
         temp_safe_path = tmp.name
         print(f"  [FIX] Non-ASCII filename detected. Using temp file for upload: {os.path.basename(safe_audio_path)}")
 
+    uploaded_file = None
     try:
-        # Faz upload do áudio para a Files API (gerencia arquivos grandes de forma eficiente)
-        uploaded_file = client.files.upload(file=safe_audio_path)
+        # Tentativas de upload com backoff exponencial para lidar com oscilações de rede e quedas (ex: WinError 10054)
+        MAX_UPLOAD_ATTEMPTS = 4
+        for upload_attempt in range(1, MAX_UPLOAD_ATTEMPTS + 1):
+            try:
+                print(f"Uploading audio to Gemini File API (tentativa {upload_attempt}/{MAX_UPLOAD_ATTEMPTS}): {audio_path}")
+                uploaded_file = client.files.upload(file=safe_audio_path)
+                break
+            except Exception as upload_err:
+                print(f"  ! Falha durante o upload para a Gemini File API: {upload_err}")
+                if upload_attempt < MAX_UPLOAD_ATTEMPTS:
+                    wait_upload_s = 5 * (2 ** (upload_attempt - 1))
+                    print(f"  Aguardando {wait_upload_s}s antes de tentar novamente o envio...")
+                    time.sleep(wait_upload_s)
+                else:
+                    raise
     finally:
-        # Remove o arquivo temporário de upload após o envio ser iniciado
+        # Remove o arquivo temporario de upload local apos o envio ser concluido ou falhar
         if temp_safe_path and os.path.exists(temp_safe_path):
             try:
                 os.remove(temp_safe_path)
@@ -287,10 +301,15 @@ def transcribe_audio_with_gemini(
         "e seguindo rigorosamente as instruções do sistema."
     )
 
-    # Configuração do retry com backoff exponencial para erros transitórios da API
-    MAX_RETRIES = 3    # Número máximo de tentativas antes de desistir
-    RETRY_CODES = {"UNAVAILABLE", "RESOURCE_EXHAUSTED"}  # Erros recuperáveis
-    BASE_WAIT_S = 10   # Tempo de espera inicial em segundos (dobra a cada tentativa)
+    # Configuração do retry com backoff exponencial para erros transitórios e sobrecarga da API (servidor cheio/503/429)
+    MAX_RETRIES = 5    # Aumentado para 5 tentativas para tolerar picos de uso nos servidores da Google
+    RETRY_KEYWORDS = {
+        "UNAVAILABLE", "RESOURCE_EXHAUSTED", "429", "503", "504", "500",
+        "OVERLOADED", "OVERLOAD", "QUOTA", "RATE_LIMIT", "RATE LIMIT",
+        "10054", "CONNECTIONRESET", "CONNECTION RESET", "REMOTEDISCONNECTED",
+        "TEMPORARILY UNAVAILABLE", "TRY AGAIN LATER", "SERVER ERROR", "BUSY"
+    }
+    BASE_WAIT_S = 12   # Tempo de espera inicial em segundos (12s, 24s, 48s, 96s...)
 
     try:
         response = None
@@ -330,14 +349,15 @@ def transcribe_audio_with_gemini(
 
             except Exception as api_err:
                 err_str = str(api_err)
-                # Verifica se o erro é transitório e pode ser recuperado com retry
-                is_retryable = any(code in err_str for code in RETRY_CODES)
+                err_upper = err_str.upper()
+                # Verifica se o erro e transitorio ou de sobrecarga e pode ser recuperado com retry
+                is_retryable = any(keyword in err_upper for keyword in RETRY_KEYWORDS)
 
                 if is_retryable and attempt < MAX_RETRIES:
-                    # Calcula o tempo de espera com backoff exponencial (10s, 20s, 40s...)
+                    # Calcula o tempo de espera com backoff exponencial (12s, 24s, 48s, 96s...)
                     wait_seconds = BASE_WAIT_S * (2 ** (attempt - 1))
-                    print(f"  ! API temporariamente indisponivel (tentativa {attempt}/{MAX_RETRIES}).")
-                    print(f"  Aguardando {wait_seconds}s antes de tentar novamente...")
+                    print(f"  ! Servidor sobrecarregado ou conexao instavel (tentativa {attempt}/{MAX_RETRIES}): {err_str[:90]}...")
+                    print(f"  Aguardando {wait_seconds}s para recuperar a conexao...")
                     time.sleep(wait_seconds)
                 else:
                     # Erro não recuperável ou esgotadas as tentativas — propaga a exceção
@@ -392,10 +412,14 @@ def transcribe_audio_with_gemini(
         return usage_data
 
     finally:
-        # Limpeza obrigatória: remove o arquivo do armazenamento da Gemini File API
-        print("Cleaning up remote file from Gemini File API storage...")
-        client.files.delete(name=uploaded_file.name)
-        print("Remote cleanup completed.")
+        # Limpeza obrigatória: remove o arquivo do armazenamento da Gemini File API de forma segura
+        if uploaded_file and hasattr(uploaded_file, "name"):
+            print("Cleaning up remote file from Gemini File API storage...")
+            try:
+                client.files.delete(name=uploaded_file.name)
+                print("Remote cleanup completed.")
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":

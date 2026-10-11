@@ -1,6 +1,3 @@
-Aqui está o glossário estruturado exatamente em formato de caixa de código (Markdown), pronto para ser copiado e colado nas diretrizes do seu transcritor de áudio ou IA:
-
-```markdown
 # GLOSSÁRIO DE CONTEXTO E CORREÇÃO FONÉTICA - PROJETO AS IS (ALPHA COLOR / NALS)
 
 ## 1. DIRETRIZ MACRO DE TRANSCRIÇÃO
@@ -10,14 +7,16 @@ Aqui está o glossário estruturado exatamente em formato de caixa de código (M
 
 ---
 
-## 2. ENTIDADES, NOMES PRÓPRIOS E COORDENADORES
-- **Syphra:** Consultoria responsável pelo mapeamento (Mapeado por: Diego Padula, Gustavo Matuck, Danilo Brandão, Sidnei).
-- **Alpha Color:** Planta industrial focada em pintura eletrostática e acabamento em perfis de alumínio.
-- **Nals / Nals Alumínio:** Empresa parceira/cliente do ecossistema de extrusão.
-- **Luís Melo:** Head / Gerente de Operações da Fábrica.
-- **Juninho / Reinaldo Jr / Pedro:** Responsáveis diretos pelo PCP, Programação e Liderança de Produção.
-- **Andréia / Arthur / Edivânia:** Operadores-chave responsáveis pela triagem, conferência física de entrada/saída, desenhos e romaneios.
-
+## 2. ENTIDADES, NOMES PRÓPRIOS E COORDENADORES (NÚCLEO SISTÊMICO)
+- **Syphra:** Consultoria responsável pela arquitetura e desenvolvimento.
+- **Danilo (Syphra):** Tech Lead / Desenvolvedor Chefe responsável por criar a camada do Orquestrador e o código de integração de máquinas.
+- **Padula (Syphra):** Consultor / Sócio Estratégico (Black Belt) focado no mapeamento AS IS / TO BE, processos e arquitetura lógica.
+- **Lucas (Alpha Color):** Dono / Diretor Executivo da Alpha Color. Responsável pela palavra final, investimentos e visão comercial.
+- **Gustavo (Alpha Color):** Gerente/Diretor que aprova o ecossistema tecnológico e avalia as integrações do chão de fábrica (GEMA/SATI).
+- **Pedro:** Desenvolvedor/Sistema terceiro responsável pela criação do novo sistema de controle industrial (ERP do chão de fábrica). O sistema dele será "abraçado" pelo Orquestrador, não substituído.
+- **Marcos Fernando / Pedro Grande:** Nomes citados no contexto de "lojas" (filiais) em Santos, em uma conversa paralela sobre outro desenvolvimento externo do Danilo, sem relação com a fábrica.
+- **Natalia (Nals):** Diretora da Nals Alumínio.
+- **Larissa Leandro (Nals):** Coordenadora de atendimento ao cliente da Nals Alumínio.
 ---
 
 ## 3. ACRÔNIMOS TÉCNICOS E ENGENHARIA DE PROCESSOS
@@ -28,10 +27,15 @@ Aqui está o glossário estruturado exatamente em formato de caixa de código (M
 - **PCP:** Planejamento e Controle de Produção.
 - **WIP (Work in Process):** Estoque em processo ou material intermediário acumulado entre estações.
 - **PDM:** Product Data Management (Gerenciamento de Dados do Produto / Cadastros de Clientes e Códigos).
+- **OEE:** Overall Equipment Effectiveness (Eficiência Global do Equipamento).
+- **SMED:** Single-Minute Exchange of Die (Técnica de otimização de Setup).
+- **IT:** Instrução de Trabalho.
+- **DNA:** Árvore de rastreabilidade do perfil. Garante a blindagem comercial contra fraudes por meio da inclusão de partícula traçadora UV.
+- **WS:** Workflow de Software da ACESYS
 
 ---
 
-## 4. MAQUINAÁRIOS, LINHAS DE PRODUÇÃO E JARGÕES
+## 4. MAQUINÁRIOS, LINHAS DE PRODUÇÃO E JARGÕES
 - **Extrusão:** Transformação mecânica do tarugo de alumínio em perfil cru.
 - **Passivação / Pré-Tratamento:** Banho químico preparatório que remove impurezas e garante aderência da tinta.
 - **Gancheiras:** Estruturas metálicas onde os perfis são pendurados para passar pelas linhas de banho e pintura.
@@ -43,10 +47,21 @@ Aqui está o glossário estruturado exatamente em formato de caixa de código (M
 - **Espátula de Celuloide:** Ferramenta manual utilizada na Linha C para realizar o ajuste físico do vácuo no filme plástico protetor.
 - **Mini Pulmão:** Áreas físicas delimitadas para estoque temporário de transição entre etapas produtivas.
 - **Romaneio:** Lista de conferência quantitativa e qualitativa atrelada às notas fiscais de industrialização.
+- **Corte:** Aplicação tripla. 1. Tratamento químico: esvaziamento parcial de tanques. 2. Extrusão: corte físico nas serras. 3. Produção: fechamento ou pausa da linha para setup.
+- **Setup:** Troca de cor na pintura ou matrizes na extrusão (fornos a 480°C). Principal causa oculta de perda de disponibilidade fabril (OEE).
+- **ACES:** correto é ACESYS sistema ERP de plateleira para extrusoras.
 
 ---
 
-## 5. DICIONÁRIO DE CORREÇÃO FONÉTICA (FILTRO ANTI-RUÍDO)
+## 5. QUALIDADE E LABORATÓRIO (COMPLEMENTO TÉCNICO)
+- **Qualicoat:** Associação e selo de qualidade mundial para certificação da pintura eletrostática.
+- **NBR 14125 / NBR 12609:** Normas ABNT que regem a qualidade de pintura eletrostática a pó e anodização em perfis de alumínio.
+- **MEK (Metil-Etil-Cetona):** Solvente industrial controlado utilizado no ensaio destrutivo de fricção (Solvent Rub Test) para validar a cura da tinta na estufa.
+- **Teste de Dobra / Mandril:** Ensaio mecânico normalizado para avaliar nível de flexibilidade, aderência e elasticidade da película de tinta curada.
+
+---
+
+## 6. DICIONÁRIO DE CORREÇÃO FONÉTICA (FILTRO ANTI-RUÍDO)
 Instruir o motor de Speech-to-Text a converter fonemas distorcidos pelo barulho metalúrgico para os termos corretos da regra do jogo:
 
 | Se o áudio transcrever algo parecido com: | Corrigir imediatamente para o termo oficial: |
@@ -60,5 +75,9 @@ Instruir o motor de Speech-to-Text a converter fonemas distorcidos pelo barulho 
 | "Filmagens", "Fita plástica", "Saco da madeira" | **Filme / Ribbon de sublimação** |
 | "Arrastre", "Água caindo" | **Arraste / Tempo de escorrimento dos banhos** |
 | "Nota B", "Nota de mentira" | **Nota de Simulação Fiscal / Triangulação** |
-
-```
+| "E-Z", "ACES", "ACE", "Ezes" | **ACESYS (Sistema ERP)** |
+| "Pau" | **Pó (Tinta Eletrostática a Pó)** |
+| "Abras" | **Apps / WhatsApp** |
+| "Excelente" | **Excel** |
+| "RFE", "FIG" | **RFID** |
+| "DT" | **DP - Departamento Pessoal** |

@@ -1,0 +1,51 @@
+
+================================================================================
+ARQUIVO: Nals 19 Kauana Contas a pagar_transcript.txt (66 linhas)
+================================================================================
+
+[OK] Nenhum problema detectado.
+
+================================================================================
+ARQUIVO: Nals 20 Kauana Contas a pagar entrev_transcript.txt (437 linhas)
+================================================================================
+
+[OK] Nenhum problema detectado.
+
+================================================================================
+ARQUIVO: Nals 21 Kauana Contas a receber_transcript.txt (646 linhas)
+================================================================================
+
+[!] BLOCOS ARTIFICIAIS COM INTERVALO FIXO (3):
+  - Linhas 281 a 286: Sequencia de 6 falas de 3s exatos
+  - Linhas 339 a 344: Sequencia de 6 falas de 3s exatos
+  - Linhas 356 a 621: Sequencia de 266 falas de 3s exatos
+
+================================================================================
+ARQUIVO: Nals 22 Kauana contas entre empresa_transcript.txt (50 linhas)
+================================================================================
+
+[OK] Nenhum problema detectado.
+
+================================================================================
+ARQUIVO: Nals 23 Silvia Nasci fiscal_transcript.txt (1892 linhas)
+================================================================================
+
+[OK] Nenhum problema detectado.
+
+================================================================================
+ARQUIVO: Nals 25 Danielle Juridico_transcript.txt (167 linhas)
+================================================================================
+
+[OK] Nenhum problema detectado.
+
+================================================================================
+ARQUIVO: Nals 26 Tiago Supervisor Produção_transcript.txt (318 linhas)
+================================================================================
+
+[OK] Nenhum problema detectado.
+
+================================================================================
+ARQUIVO: Nals 27 Reinaldo Ruys Qualidade_transcript.txt (2059 linhas)
+================================================================================
+
+[OK] Nenhum problema detectado.

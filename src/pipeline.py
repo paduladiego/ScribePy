@@ -5,14 +5,16 @@ from .audio_processor import preprocess_audio, get_wav_duration, slice_wav
 from .transcriber_dispatcher import transcribe_audio
 from .transcriber_gemini import get_resume_offset, clean_transcript_residue
 
-def run_pipeline(input_audio_path: str, custom_glossary: str = None) -> None:
+def run_pipeline(input_audio_path: str, custom_glossary: str = None, noise_reduce: bool = False) -> None:
     """
     Orquestra o pipeline completo do ScribePy com suporte a checkpoint e resume.
     Desacoplado de argumentos de CLI (sys.argv) e sys.exit() para suportar futuros front-ends.
 
     Args:
         input_audio_path (str): Caminho para o arquivo de áudio de entrada (ex: .m4a).
-        custom_glossary (str, optional): Termos técnicos customizados para o Gemini.
+        custom_glossary (str, optional): Termos técnicos customizados para o provedor ativo.
+        noise_reduce (bool): Se True, aplica redução de ruído industrial (flag 'clear' na CLI).
+                             Se False (padrão), apenas converte e normaliza o áudio.
     """
     if not os.path.exists(input_audio_path):
         raise FileNotFoundError(f"Input audio file '{input_audio_path}' does not exist.")
@@ -37,6 +39,9 @@ def run_pipeline(input_audio_path: str, custom_glossary: str = None) -> None:
     print(f"Input File:        {input_audio_path}")
     print(f"Intermediate WAV:  {temp_wav_path}")
     print(f"Final Transcript:  {output_txt_path}")
+    # Exibe o modo de processamento de áudio ativo
+    audio_mode_label = "🏭 CLEAR mode (noise reduction ON)" if noise_reduce else "🏢 CLEAN mode (no noise reduction)"
+    print(f"Audio Mode:        {audio_mode_label}")
     print("-" * 60)
 
     # -------------------------------------------------------------------------
@@ -73,8 +78,8 @@ def run_pipeline(input_audio_path: str, custom_glossary: str = None) -> None:
         print(f"[SKIP] WAV file already exists: {temp_wav_path}")
         print(f"[SKIP] Reusing existing processed audio. Duration: {duration_min:02d}:{duration_sec:02d}")
     else:
-        # WAV não encontrado — executa o pré-processamento completo
-        _, audio_duration_seconds = preprocess_audio(input_audio_path, temp_wav_path)
+        # WAV não encontrado — executa o pré-processamento com o modo configurado
+        _, audio_duration_seconds = preprocess_audio(input_audio_path, temp_wav_path, noise_reduce=noise_reduce)
 
     # -------------------------------------------------------------------------
     # Loop de transcrição adaptativo para cobrir 100% do arquivo
